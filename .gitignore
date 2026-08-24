@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+dist/
+build/
+
+# Never commit local credentials or access material.
+.env
+.env.*
+*.dpapi
+*.key
+*.pem
+local-secrets.json

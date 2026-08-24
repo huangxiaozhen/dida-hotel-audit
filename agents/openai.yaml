@@ -1,0 +1,7 @@
+interface:
+  display_name: "Dida Hotel Audit"
+  short_description: "Analyze live Dida hotel static content"
+  default_prompt: "Use $dida-hotel-audit to fetch the relevant Dida hotel static records and analyze them for my request."
+
+policy:
+  allow_implicit_invocation: true
