@@ -1,178 +1,146 @@
 # Dida 酒店审核
 
-`dida-hotel-audit` 是一个可复用的 Agent Skill，用于获取当前 Dida Content API 的酒店静态记录，并由当前模型分析与用户请求相关的字段。它包含用于比较酒店身份和核验坐标距离的确定性辅助功能，以及处理其他静态内容问题的通用工作流。
+`dida-hotel-audit` 是一个可复用的 Agent Skill。它直接调用 Dida Content API v2 获取酒店完整静态记录，再由当前大模型按用户的问题分析酒店身份、经纬度、房型、设施、政策、图片等内容。
 
-本 Skill 不会为每个新问题创建新的 Skill。它会获取用户指定的酒店记录，并把返回的静态数据交给当前模型分析。
-
-## 安装后包含和不包含的内容
-
-安装这个 GitHub 仓库只会安装 Skill 指令和客户端代码。仓库中**不包含** Dida ClientID、Dida LicenseKey、Audit 访问密钥或本地加密凭据文件；仅完成安装并不会获得 Dida 访问权限。
-
-团队使用时，各组件按以下方式分离：
+本版本采用最简单的“直接凭证”方案：不使用 Audit key、不部署网关，也不需要 Cloudflare。ClientID 已在程序中固定为 `Huangzhen_test`，每位同事只需在自己的电脑上配置 LicenseKey，查询时由本机直接访问 Dida 静态接口。
 
 ```text
-同事的 Agent -> 已安装的 Skill -> HTTPS Audit 网关 -> Dida Content API
-                                   ^
-                                   个人 Audit key
+同事的 Agent -> 已安装的 dida-hotel-audit -> Dida Content API v2
+                         ^
+              本机明文 LicenseKey 配置
 ```
 
-- Dida ClientID 和 LicenseKey 仅保存在受信任的网关机器上。
-- 每位同事获得一个可单独撤销的 Audit key，而不是 Dida 凭据。
-- 仓库和 Agent 提示词中均不包含这些敏感信息。
-- 当前内置服务器默认只监听 `127.0.0.1`。其他机器上的同事必须先获得可信的 HTTPS 隧道地址或已部署的网关 URL，才能使用本 Skill。
+## 一条消息安装并配置
 
-## 从 GitHub 安装
-
-仓库根目录中必须保留 `SKILL.md`。
-
-### Codex
-
-向 Codex 输入：
+把下面整段发给 Codex、OpenClaw 或具备终端权限的 Cursor Agent，并替换 LicenseKey 占位符：
 
 ```text
-使用 $skill-installer 安装以下仓库根目录中的 Skill：
-https://github.com/huangxiaozhen/dida-hotel-audit
-安装名称设为 dida-hotel-audit。
+帮我安装并配置 dida-hotel-audit：
+GitHub 地址：https://github.com/huangxiaozhen/dida-hotel-audit
+LicenseKey：<DIDA_LICENSE_KEY>
+
+请使用当前 Agent 支持的全局 Skill 安装方式。安装完成后，运行该 Skill 自带的 scripts/configure.py，把 LicenseKey 保存到本机明文配置文件；再运行 scripts/credential_status.py 验证。最后只告诉我 Skill 是否安装成功、固定 ClientID 和配置文件路径，不要回显 LicenseKey，也不要把 LicenseKey 写入 GitHub 仓库。
 ```
 
-如果新 Skill 没有立即显示，请重启 Codex。
+这里的“一条消息”表示 Agent 在同一个任务里先安装、再配置。宿主产品如果弹出 GitHub Skill 安装确认或安全审核，需要用户批准一次；Skill 不能绕过宿主本身的确认机制。
+
+## 各平台安装方式
 
 ### OpenClaw
 
-全局安装：
+OpenClaw 支持从 Git 仓库全局安装根目录含 `SKILL.md` 的 Skill：
 
 ```powershell
 openclaw skills install git:huangxiaozhen/dida-hotel-audit@main --global
 ```
 
-如果只想安装到当前工作区，请省略 `--global`。
+如果安装策略给出警告，按 OpenClaw 的提示审核并确认后继续。
 
 ### Cursor
 
-打开 **Customize -> Rules -> Add Rule -> Remote Rule (Github)**，然后输入：
+Cursor 官方的 GitHub 导入入口是 **Customize -> Rules -> Add Rule -> Remote Rule (Github)**，输入：
 
 ```text
 https://github.com/huangxiaozhen/dida-hotel-audit
 ```
 
-## 在 Windows 上配置同事的 Audit key
+具备终端权限的 Cursor Agent 也可以根据上面的“一条消息”把仓库安装到 Cursor 能自动发现的全局 Skill 目录，再执行配置脚本。
 
-只有在负责人提供了可访问的网关 URL 和个人 Audit key 后，才能进行此配置。请在已安装的 Skill 目录中运行命令。
+### Codex
 
-最安全的配置方式是使用隐藏输入：
+向 Codex 发送上面的“一条消息”即可；Codex 应使用可用的 Skill 安装功能安装该 GitHub 仓库，然后执行配置脚本。新安装的 Skill 如果没有立即出现在列表中，请重启 Codex。
 
-```powershell
-python -m dida_hotel_audit client configure --gateway-url https://audit.example.com
-```
+## 手动配置
 
-如果终端的隐藏输入模式无法粘贴，请仅复制 Audit key，然后使用剪贴板模式。程序会使用 Windows DPAPI 加密该密钥，随后清空剪贴板：
+如果已经安装完成，可以直接运行：
 
 ```powershell
-python -m dida_hotel_audit client configure --gateway-url https://audit.example.com --from-clipboard
+python "<SKILL_DIR>/scripts/configure.py" --license-key "<DIDA_LICENSE_KEY>"
 ```
 
-在不显示密钥的情况下检查配置：
+检查状态：
 
 ```powershell
-python -m dida_hotel_audit client status
+python "<SKILL_DIR>/scripts/credential_status.py"
 ```
 
-在非 Windows 机器上，请使用操作系统或平台提供的密钥管理器，在运行时注入 `DIDA_AUDIT_ACCESS_KEY` 和 `DIDA_AUDIT_GATEWAY_URL`。不要把它们保存在本仓库或 Agent 提示词中。
+配置脚本不会回显 LicenseKey。默认明文文件位置为：
 
-## 示例提示词
+- Windows：`%LOCALAPPDATA%\dida-hotel-audit\credentials.json`
+- macOS：`~/Library/Application Support/dida-hotel-audit/credentials.json`
+- Linux：`~/.config/dida-hotel-audit/credentials.json`
+
+也可以用 `DIDA_HOTEL_AUDIT_CREDENTIALS_FILE` 指定其他文件。运行时提供 `DIDA_LICENSE_KEY` 环境变量，会优先使用该 LicenseKey；ClientID 始终使用程序中的固定值。
+
+## 使用示例
+
+普通酒店身份比较：
 
 ```text
-用 dida-hotel-audit 的 compare_hotels 判断 Dida 酒店 1062431 和 2333428 是否为同一家酒店。
+用 dida-hotel-audit 判断 Dida 酒店 1062431 和 2333428 是否为同一家酒店。
 ```
+
+核验坐标：
 
 ```text
 用 dida-hotel-audit 查看 Dida 酒店 3912 的经纬度是否正确，和 Google Maps 的酒店坐标比较，判断差距是否在 1000 米以内。
 ```
 
+怀疑 GIATA 映射错误：
+
 ```text
-用 dida-hotel-audit 拉取这些酒店的完整静态信息，并根据房型、设施和政策回答我的问题：3912、1062431。
+有个 GIATA 可能匹配错误：Dida 的两个不同酒店被匹配到了 GIATA 的同一个酒店。请用 dida-hotel-audit 拉取两个 Dida 酒店的完整静态信息，排除 GIATA 本身作为同店证据，再判断它们是否确实为不同酒店。
 ```
 
-## 网关负责人在 Windows 上的配置步骤
+其他静态内容问题：
 
-需要 Python 3.10 或更高版本，不依赖第三方软件包。
+```text
+用 dida-hotel-audit 拉取酒店 3912 和 1062431 的完整静态信息，并根据房型、设施和政策回答我的问题。
+```
 
-1. 通过终端隐藏输入保存 Dida 凭据：
+## 本地脚本
 
-   ```powershell
-   python -m dida_hotel_audit credentials set --client-id <your-client-id>
-   ```
-
-   如果隐藏输入模式无法粘贴，请仅复制 LicenseKey，然后使用剪贴板模式：
-
-   ```powershell
-   python -m dida_hotel_audit credentials set --client-id <your-client-id> --from-clipboard
-   ```
-
-2. 为每位同事创建独立的访问密钥：
-
-   ```powershell
-   python -m dida_hotel_audit access-key create --label <teammate-name> --no-save-client
-   ```
-
-   每个密钥只显示一次。请通过获准使用的密钥共享渠道传递，不要通过聊天、电子邮件、Issue 或 Git 提交发送。
-
-3. 启动用于开发的本地网关：
-
-   ```powershell
-   python -m dida_hotel_audit serve
-   ```
-
-   不要把内置的明文 HTTP 监听服务直接暴露到互联网。团队需要远程访问时，应在其前面配置可信的 HTTPS 隧道或反向代理。
-
-4. 网关负责人需要在本机使用时，创建一个密钥，并同时保存一份由 DPAPI 保护的本地客户端副本：
-
-   ```powershell
-   python -m dida_hotel_audit access-key create --label local-owner
-   ```
-
-## 直接进行开发测试
-
-网关运行后，可以比较两家酒店：
+比较两家酒店：
 
 ```powershell
-python scripts/compare_hotels.py 1 2
+python scripts/compare_hotels.py 1062431 2333428
 ```
 
-获取 1 至 50 家酒店的完整静态记录，交给模型分析：
+如果正在调查 GIATA 本身是否映射错误，必须把 GIATA 从同店评分中排除：
+
+```powershell
+python scripts/compare_hotels.py 1062431 2333428 --suspect-external-provider giata
+```
+
+获取 1 至 50 家酒店的完整静态记录：
 
 ```powershell
 python scripts/fetch_hotels.py 3912 1062431
 ```
 
-在可信地图上定位酒店之前，先获取一家酒店的静态记录：
+获取单家酒店：
 
 ```powershell
 python scripts/get_hotel.py 3912
 ```
 
-核实地图标记对应同一家酒店后，计算坐标距离：
+在外部地图上核实同一家酒店的标记坐标后，计算球面距离：
 
 ```powershell
-python scripts/audit_coordinate.py 3912 --reference-latitude 0 --reference-longitude 0 --reference-provider "Google Maps" --reference-url "<verified-place-url>"
+python scripts/audit_coordinate.py 3912 --reference-latitude 0 --reference-longitude 0 --reference-provider "Google Maps" --reference-url "<VERIFIED_PLACE_URL>"
 ```
 
-请把示例中的参考坐标和 URL 替换为经过核实的地点标记数据。
+请把示例坐标和 URL 替换为经过核实的地点数据。
 
-## 安全模型
+## 凭证和访问边界
 
-- Dida 凭据和本地 Audit 客户端密钥使用 Windows DPAPI 加密，存放在本仓库之外、当前用户的本地应用数据目录中。
-- 网关访问密钥是由 32 个字母和数字组成的随机字符串，服务器只保存其 SHA-256 摘要。
-- 访问密钥不能通过命令行参数传入。
-- 网关不会记录凭据或请求正文。
-- 无需修改 Dida 凭据，即可单独撤销某位同事的密钥：
-
-  ```powershell
-  python -m dida_hotel_audit access-key list
-  python -m dida_hotel_audit access-key revoke <key-id>
-  ```
-
-绝不要把凭据添加到本仓库、`.env` 文件、截图、提示词、Issue 报告或 Pull Request 中。发布项目前或报告安全问题前，请先阅读 [SECURITY.md](SECURITY.md)。
+- `credentials.json` 只保存 LicenseKey，是明文文件，不是加密文件。
+- ClientID 固定在程序中，同事不需要输入或保存 ClientID。
+- 凭证文件保存在 Skill 仓库之外，并已把常见凭证文件名加入 `.gitignore`。
+- 配置命令的参数和安装者发给 Agent 的消息中会包含 LicenseKey，这是本方案有意接受的简化方式。
+- 所有同事使用同一个 Dida 凭证，因此无法按同事单独撤销；需要停用某人时只能更换共享 LicenseKey，并让仍获授权的同事重新配置。
+- Skill 只调用 `https://static-api.didatravel.com/api/v1/hotel/details`，不实现价格、库存、下单或订单操作。
+- 仓库、示例、测试、日志和最终回答中都不应出现真实 LicenseKey。
 
 ## 测试
 
@@ -180,4 +148,4 @@ python scripts/audit_coordinate.py 3912 --reference-latitude 0 --reference-longi
 python -m unittest discover -s tests -v
 ```
 
-测试使用合成的酒店记录和模拟 API 响应，不需要也不会输出真实凭据。
+测试只使用合成凭证、合成酒店记录和模拟 API，不会调用真实账号。

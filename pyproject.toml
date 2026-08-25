@@ -4,13 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dida-hotel-audit"
-version = "0.1.0"
-description = "Authenticated gateway and Agent Skill for Dida hotel static-content audits"
+version = "0.2.0"
+description = "Direct Dida Content API client and Agent Skill for hotel static-content audits"
 requires-python = ">=3.10"
 dependencies = []
 
 [project.scripts]
-dida-hotel-audit-gateway = "dida_hotel_audit.cli:main"
+dida-hotel-audit = "dida_hotel_audit.cli:main"
 
 [tool.setuptools]
 packages = ["dida_hotel_audit"]

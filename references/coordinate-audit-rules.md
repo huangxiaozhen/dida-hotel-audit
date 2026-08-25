@@ -1,35 +1,35 @@
-# Coordinate audit rules
+# 酒店坐标核验规则
 
-Use these rules only for a single-hotel coordinate-quality check.
+仅用于单家酒店的坐标质量核验。
 
-## Verify the reference property
+## 确认参考地点身份
 
-Confirm that the external map result represents the same hotel as the Dida record. Prefer several independent matches, such as:
+先确认外部地图结果与 Dida 记录代表同一家酒店。优先使用多个相互独立的字段，例如：
 
-- distinctive hotel name or an established name variant;
-- street address, city, and country;
-- telephone number;
-- official website or another strong property identifier.
+- 有辨识度的酒店名称或已知名称变体；
+- 街道地址、城市和国家；
+- 电话号码；
+- 官方网站或其他强身份标识。
 
-A shared city and a similar generic name are not enough. If multiple plausible map places remain, stop with `evidence insufficient`.
+同一城市加一个相似的通用名称并不足够。如果仍有多个可能的地图地点，应停止并报告“证据不足”。
 
-## Select the reference coordinate
+## 选择参考坐标
 
-Use the hotel place marker or place-detail coordinate. Do not use:
+使用酒店地点标记或地点详情中的坐标。不要使用：
 
-- the map viewport center shown after a broad search;
-- coordinates copied from the Dida record or a page that merely republishes Dida data;
-- a street, neighborhood, city-center, or nearby landmark coordinate;
-- coordinates inferred only from an unverified URL slug.
+- 宽泛搜索后的地图视窗中心；
+- 从 Dida 记录或仅转载 Dida 数据的页面复制的坐标；
+- 街道、社区、市中心或附近地标的坐标；
+- 仅根据未经核实的 URL 文本推断出的坐标。
 
-For Google Maps, preserve the place URL used as evidence. A coordinate embedded in a canonical place URL can be used only when the surrounding place result has been independently matched to the Dida hotel. Treat an `@latitude,longitude` map-center value cautiously because it can represent the viewport rather than the marker.
+使用 Google Maps 时，应保留用于取证的地点 URL。只有在周边地点信息已独立匹配到同一家 Dida 酒店后，才可以使用规范地点 URL 中嵌入的坐标。谨慎对待 `@latitude,longitude`，因为它可能代表地图视窗中心，而不是地点标记。
 
-## Distance and conclusion
+## 距离与结论
 
-The bundled script computes the WGS84-like great-circle distance with the Haversine formula.
+脚本使用 Haversine 公式计算近似 WGS84 球面距离。
 
-- Distance at or below the requested threshold: coordinate is within tolerance.
-- Distance above the requested threshold: coordinate is outside tolerance.
-- Unverified place identity or marker coordinate: evidence insufficient, regardless of the numeric distance.
+- 距离小于等于用户要求的阈值：坐标在容差以内。
+- 距离大于阈值：坐标超出容差。
+- 地点身份或标记坐标未经核实：无论数值距离多小，都属于证据不足。
 
-Distance alone does not prove the map result is the same hotel. Always report the identity evidence and both data sources.
+距离本身不能证明地图结果是同一家酒店。必须同时报告身份匹配证据和两组数据来源。

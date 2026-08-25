@@ -1,29 +1,30 @@
-# Hotel identity comparison rules
+# 酒店身份比较规则
 
-Apply these rules when interpreting `compare_hotels` output.
+解释 `compare_hotels` 的结果时使用这些规则。
 
-## Evidence priority
+## 证据优先级
 
-1. Matching trusted third-party mapping identifiers are strong same-property evidence. Conflicting identifiers require corroboration because upstream mappings can also be wrong.
-2. Exact telephone plus a nearby coordinate and compatible name/address is strong evidence.
-3. Coordinate distance, full address, postal code, destination, and city should agree as a group.
-4. Name similarity alone is never enough. Translations, rebrands, punctuation, and nearby properties can produce similar names.
-5. Room types, room counts, facilities, descriptions, images, and star ratings are supporting evidence only. Supplier coverage can differ between duplicate records.
+1. 正常情况下，相同的可信第三方映射标识是较强的同店证据；但第三方映射本身也可能出错。
+2. 如果用户正在调查 GIATA、Vervotech 等提供方的映射是否错误，必须用 `--suspect-external-provider` 排除该提供方的正负评分。不能用“两个记录具有同一个被调查代码”证明它们是同一家酒店。
+3. 电话完全一致，并且坐标接近、名称和地址相容，是较强的组合证据。
+4. 坐标距离、完整地址、邮编、目的地和城市应作为一组证据共同判断。
+5. 名称相似永远不够。翻译、改名、标点差异和相邻酒店都可能产生相似名称。
+6. 房型、房间数、设施、描述、图片和星级只能作为辅助证据；重复记录之间的供应商覆盖可能不同。
 
-## Distance interpretation
+## 距离解释
 
-- Up to 100 m: strong location agreement.
-- 100–500 m: nearby and generally supportive.
-- 500–1,000 m: weakly supportive; inspect address and telephone.
-- Over 1,000 m: material conflict, not proof by itself.
-- Over 5,000 m: strong conflict unless one coordinate is demonstrably erroneous.
+- 不超过 100 米：较强的位置一致证据。
+- 100–500 米：位置接近，通常有支持作用。
+- 500–1,000 米：弱支持，需要检查地址和电话。
+- 超过 1,000 米：重要冲突，但不能单独证明是不同酒店。
+- 超过 5,000 米：强冲突，除非能够证明其中一组坐标错误。
 
-Distances in the gateway output are calculated with the Haversine formula from the coordinates exactly returned by Dida.
+脚本按 Dida 原样返回的两组坐标，通过 Haversine 公式计算距离。
 
-## Conclusions
+## 结论
 
-- `same_hotel`: multiple independent identifiers agree and there is no unresolved hard conflict.
-- `different_hotels`: multiple independent fields conflict; advise against automatic merging.
-- `manual_review` or `insufficient_data`: fields are missing, mixed, or cannot support a safe binary decision.
+- `same_hotel`：多个相互独立的身份字段一致，且没有未解决的硬冲突。
+- `different_hotels`：多个相互独立的字段发生冲突，不建议自动合并。
+- `manual_review` 或 `insufficient_data`：字段缺失、证据混合，或不足以安全给出二元判断。
 
-Do not hide missing fields. Use “not returned” rather than guessing a value.
+不得隐藏缺失字段，应写“当前 Dida 账号未返回”，不能猜测。

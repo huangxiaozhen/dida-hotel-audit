@@ -1,31 +1,31 @@
-# General static analysis rules
+# 通用静态信息分析规则
 
-Use this fallback for Dida static-content questions that are not hotel-identity comparison or coordinate audit.
+适用于酒店身份比较和坐标核验之外的 Dida 静态内容问题。
 
-## Execution boundary
+## 执行边界
 
-- Do not create a new Skill or specialized workflow for an ordinary question.
-- Fetch the requested hotel records through `fetch_hotels.py` and analyze them with the current model.
-- Modify or create tooling only when the user explicitly requests development work.
+- 普通问题不要创建新的 Skill 或专用工作流。
+- 使用 `fetch_hotels.py` 获取请求涉及的酒店记录，再由当前模型分析。
+- 只有用户明确要求开发或扩展工具时，才修改代码或创建工具。
 
-## Evidence model
+## 证据模型
 
-Use only fields actually present in the returned Dida records. Relevant groups can include:
+只能使用 Dida 响应中实际存在的字段。相关字段可能包括：
 
-- hotel identity, category, chain, brand, star rating, address, telephone, destination, regions, and coordinates;
-- descriptions, check-in/out policy, child and extra-bed policy, fees, notices, facilities, and services;
-- room types, occupancy, bed/window/view/smoking attributes, room facilities, room policies, and images;
-- hotel images, room count, opening date, review score, GIATA codes, and Vervotech codes.
+- 酒店身份、类别、集团、品牌、星级、地址、电话、目的地、区域和坐标；
+- 描述、入住/退房政策、儿童和加床政策、费用、通知、设施和服务；
+- 房型、入住人数、床型、窗户、景观、吸烟属性、房间设施、房间政策和图片；
+- 酒店图片、房间数、开业日期、评分、GIATA code 和 Vervotech code。
 
-Field absence means `not returned by the configured Dida account`, not `false`, `none exists`, or `the hotel does not provide it`. Dida may return different field coverage for different hotels or account configurations.
+字段缺失表示“当前配置的 Dida 账号没有返回”，不表示 `false`、不存在或酒店不提供。不同酒店和不同账号配置可能返回不同字段覆盖。
 
-## Model analysis
+## 模型分析
 
-- Answer the user's question rather than summarizing every field.
-- Quote exact short values when useful, but summarize long HTML descriptions and policies.
-- Distinguish direct Dida facts, calculations or inferences, and external-source facts.
-- For comparisons, show aligned fields and explain missing data.
-- For a conclusion that depends on current external facts, verify those facts with an appropriate source and cite it.
-- If evidence cannot support a definite conclusion, say `evidence insufficient` and identify what is missing.
+- 回答用户的具体问题，不要机械汇总每个字段。
+- 短值可以准确引用；较长的 HTML 描述和政策应概括。
+- 明确区分 Dida 直接事实、计算或推断，以及外部来源事实。
+- 比较时对齐字段并说明缺失数据。
+- 如果结论依赖当前外部事实，应使用适当来源核验并引用。
+- 证据不能支持明确结论时，应说明“证据不足”并指出缺失内容。
 
-Always include the Dida trace ID and response timestamp when present so the result can be audited.
+Dida 响应中存在 trace ID 和时间戳时，始终一并报告，便于追踪。

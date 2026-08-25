@@ -45,6 +45,22 @@ class HotelAuditServiceTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "more than 50"):
             self.service.get_hotels(list(range(1, 52)))
 
+    def test_compare_hotels_passes_suspect_provider_to_comparison(self):
+        result = self.service.compare_hotels(
+            1,
+            2,
+            suspect_external_providers=["giata"],
+        )
+        self.assertTrue(result["ok"])
+        self.assertEqual(
+            result["request"]["suspect_external_providers"],
+            ["giata"],
+        )
+        self.assertEqual(
+            result["comparison"]["suspect_external_providers"],
+            ["giata"],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -85,6 +85,50 @@ class ComparisonTests(unittest.TestCase):
         result = compare_hotel_records(left, right)
         self.assertEqual(result["decision"], "manual_review")
 
+    def test_suspect_giata_mapping_is_excluded_from_identity_scoring(self):
+        left = {
+            "id": 101,
+            "name": "Example Grand Hotel",
+            "location": {
+                "address": "1 North Street",
+                "destination": {"code": "9001"},
+                "coordinate": {"latitude": 40.0, "longitude": 65.0},
+            },
+            "telephone": "+1 555 0100",
+            "zipCode": "10001",
+            "giataCode": "778899",
+        }
+        right = {
+            "id": 202,
+            "name": "Example Grand Hotel",
+            "location": {
+                "address": "88 Industrial Village",
+                "destination": {"code": "9001"},
+                "coordinate": {"latitude": 41.0, "longitude": 66.0},
+            },
+            "telephone": "+1 555 9999",
+            "zipCode": "10999",
+            "giataCode": "778899",
+        }
+
+        trusted_result = compare_hotel_records(left, right)
+        audited_result = compare_hotel_records(
+            left,
+            right,
+            suspect_external_providers=["GIATA Code"],
+        )
+
+        self.assertEqual(trusted_result["decision"], "same_hotel")
+        self.assertEqual(audited_result["decision"], "different_hotels")
+        external = next(
+            item
+            for item in audited_result["evidence"]
+            if item["field"] == "external_identifiers"
+        )
+        self.assertEqual(external["state"], "excluded_from_decision")
+        self.assertEqual(external["suspect_matching_keys"], ["giata"])
+        self.assertEqual(external["matching_keys"], [])
+
     def test_haversine_known_short_distance(self):
         distance = haversine_meters(40.0, 65.0, 40.0001, 65.0001)
         self.assertGreater(distance, 10)

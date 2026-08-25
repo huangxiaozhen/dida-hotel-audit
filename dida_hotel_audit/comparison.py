@@ -20,6 +20,13 @@ _GENERIC_HOTEL_NAME_WORDS = {
     "resort",
     "the",
 }
+_EXTERNAL_IDENTIFIER_PROVIDERS = (
+    "giata",
+    "vervotech",
+    "hotelbeds",
+    "expedia",
+    "ean",
+)
 
 
 def _case_get(value: Any, *names: str) -> Any:
@@ -152,15 +159,35 @@ def _recursive_pairs(value: Any, prefix: str = "") -> Iterable[tuple[str, Any]]:
 
 def _external_ids(record: dict[str, Any]) -> dict[str, list[str]]:
     identifiers: dict[str, set[str]] = {}
-    allowed_fragments = ("giata", "vervotech", "hotelbeds", "expedia", "ean")
     for path, value in _recursive_pairs(record):
         path_key = path.casefold()
-        if value in (None, "") or not any(fragment in path_key for fragment in allowed_fragments):
+        if value in (None, "") or not any(
+            fragment in path_key for fragment in _EXTERNAL_IDENTIFIER_PROVIDERS
+        ):
             continue
         leaf = path.split(".")[-1].split("[")[0].casefold()
-        key = next((fragment for fragment in allowed_fragments if fragment in path_key), leaf)
+        key = next(
+            (
+                fragment
+                for fragment in _EXTERNAL_IDENTIFIER_PROVIDERS
+                if fragment in path_key
+            ),
+            leaf,
+        )
         identifiers.setdefault(key, set()).add(str(value).strip())
     return {key: sorted(values) for key, values in sorted(identifiers.items())}
+
+
+def _external_provider_key(value: str) -> str:
+    normalized = normalize_text(value).replace(" ", "")
+    return next(
+        (
+            provider
+            for provider in _EXTERNAL_IDENTIFIER_PROVIDERS
+            if provider in normalized
+        ),
+        normalized,
+    )
 
 
 def _room_count(record: dict[str, Any]) -> Any:
@@ -213,10 +240,18 @@ def _value_state(left: Any, right: Any, *, normalizer=normalize_text) -> str:
 
 
 def compare_hotel_records(
-    record_a: dict[str, Any], record_b: dict[str, Any]
+    record_a: dict[str, Any],
+    record_b: dict[str, Any],
+    *,
+    suspect_external_providers: list[str] | None = None,
 ) -> dict[str, Any]:
     left = summarize_hotel(record_a)
     right = summarize_hotel(record_b)
+    suspect_providers = {
+        _external_provider_key(provider)
+        for provider in (suspect_external_providers or [])
+        if normalize_text(provider)
+    }
     score = _Score()
     evidence: list[dict[str, Any]] = []
     reasons: list[str] = []
@@ -231,6 +266,7 @@ def compare_hotel_records(
             "reasons": ["The two records have the same Dida hotel ID."],
             "evidence": [{"field": "dida_id", "left": id_a, "right": id_b, "state": "match"}],
             "summaries": [left, right],
+            "suspect_external_providers": sorted(suspect_providers),
         }
 
     name_similarity = hotel_name_similarity(left["name"], right["name"])
@@ -369,14 +405,26 @@ def compare_hotel_records(
     external_left = left["external_identifiers"]
     external_right = right["external_identifiers"]
     common_keys = sorted(set(external_left) & set(external_right))
+    trusted_common_keys = [key for key in common_keys if key not in suspect_providers]
+    suspect_common_keys = [key for key in common_keys if key in suspect_providers]
     external_matches = [
         key
-        for key in common_keys
+        for key in trusted_common_keys
         if set(external_left[key]) & set(external_right[key])
     ]
     external_conflicts = [
         key
-        for key in common_keys
+        for key in trusted_common_keys
+        if not (set(external_left[key]) & set(external_right[key]))
+    ]
+    suspect_matches = [
+        key
+        for key in suspect_common_keys
+        if set(external_left[key]) & set(external_right[key])
+    ]
+    suspect_conflicts = [
+        key
+        for key in suspect_common_keys
         if not (set(external_left[key]) & set(external_right[key]))
     ]
     if external_matches:
@@ -393,12 +441,21 @@ def compare_hotel_records(
                 if external_matches and not external_conflicts
                 else "conflict"
                 if external_conflicts
+                else "excluded_from_decision"
+                if suspect_matches or suspect_conflicts
                 else "missing"
             ),
             "matching_keys": external_matches,
             "conflicting_keys": external_conflicts,
+            "suspect_matching_keys": suspect_matches,
+            "suspect_conflicting_keys": suspect_conflicts,
+            "excluded_providers": sorted(suspect_providers),
         }
     )
+    if suspect_matches or suspect_conflicts:
+        reasons.append(
+            "External identifiers from the provider under audit were excluded from scoring."
+        )
 
     decision = "manual_review"
     confidence = "low"
@@ -442,4 +499,5 @@ def compare_hotel_records(
         "reasons": reasons,
         "evidence": evidence,
         "summaries": [left, right],
+        "suspect_external_providers": sorted(suspect_providers),
     }

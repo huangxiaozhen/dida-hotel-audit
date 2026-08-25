@@ -5,8 +5,8 @@ from __future__ import annotations
 from typing import Any, Callable
 
 from .comparison import compare_hotel_records
+from .credentials import get_dida_credentials
 from .dida_client import DidaClient
-from .secrets_store import get_dida_credentials
 
 
 def _hotel_id(record: Any) -> int | None:
@@ -96,7 +96,12 @@ class HotelAuditService:
         }
 
     def compare_hotels(
-        self, hotel_id_a: int, hotel_id_b: int, language: str = "en-US"
+        self,
+        hotel_id_a: int,
+        hotel_id_b: int,
+        language: str = "en-US",
+        *,
+        suspect_external_providers: list[str] | None = None,
     ) -> dict[str, Any]:
         if not isinstance(hotel_id_a, int) or hotel_id_a <= 0:
             raise ValueError("hotel_id_a must be a positive integer")
@@ -126,13 +131,25 @@ class HotelAuditService:
                 "summaries": [],
             }
         elif hotel_id_a == hotel_id_b:
-            comparison = compare_hotel_records(by_id[hotel_id_a], by_id[hotel_id_a])
+            comparison = compare_hotel_records(
+                by_id[hotel_id_a],
+                by_id[hotel_id_a],
+                suspect_external_providers=suspect_external_providers,
+            )
         else:
-            comparison = compare_hotel_records(by_id[hotel_id_a], by_id[hotel_id_b])
+            comparison = compare_hotel_records(
+                by_id[hotel_id_a],
+                by_id[hotel_id_b],
+                suspect_external_providers=suspect_external_providers,
+            )
 
         return {
             "ok": not missing_ids,
-            "request": {"hotel_ids": [hotel_id_a, hotel_id_b], "language": language},
+            "request": {
+                "hotel_ids": [hotel_id_a, hotel_id_b],
+                "language": language,
+                "suspect_external_providers": suspect_external_providers or [],
+            },
             "source": {
                 "provider": "Dida Content API v2",
                 "endpoint": "/api/v1/hotel/details",

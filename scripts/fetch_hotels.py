@@ -13,8 +13,9 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from dida_hotel_audit.gateway_client import call_gateway  # noqa: E402
-from dida_hotel_audit.secrets_store import SecretStoreError  # noqa: E402
+from dida_hotel_audit.credentials import CredentialError  # noqa: E402
+from dida_hotel_audit.dida_client import DidaAPIError  # noqa: E402
+from dida_hotel_audit.service import HotelAuditService  # noqa: E402
 
 
 def main() -> int:
@@ -31,14 +32,20 @@ def main() -> int:
     if any(hotel_id <= 0 for hotel_id in args.hotel_ids):
         parser.error("hotel IDs must be positive integers")
     try:
-        result = call_gateway(
-            "/v1/hotels/static",
-            {"hotel_ids": args.hotel_ids, "language": args.language},
-        )
-    except SecretStoreError as exc:
+        result = HotelAuditService().get_hotels(args.hotel_ids, args.language)
+    except CredentialError as exc:
         result = {
             "ok": False,
-            "error": {"code": "access_key_unavailable", "message": str(exc)},
+            "error": {"code": "credentials_unavailable", "message": str(exc)},
+        }
+    except DidaAPIError as exc:
+        result = {
+            "ok": False,
+            "error": {
+                "code": "dida_api_error",
+                "message": str(exc),
+                "status": exc.status,
+            },
         }
     print(json.dumps(result, ensure_ascii=False, indent=2))
     return 0 if result.get("ok") else 1

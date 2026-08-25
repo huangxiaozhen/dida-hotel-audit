@@ -13,3 +13,4 @@ build/
 *.key
 *.pem
 local-secrets.json
+credentials.json

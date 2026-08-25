@@ -14,8 +14,9 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from dida_hotel_audit.coordinate_audit import audit_hotel_coordinate  # noqa: E402
-from dida_hotel_audit.gateway_client import call_gateway  # noqa: E402
-from dida_hotel_audit.secrets_store import SecretStoreError  # noqa: E402
+from dida_hotel_audit.credentials import CredentialError  # noqa: E402
+from dida_hotel_audit.dida_client import DidaAPIError  # noqa: E402
+from dida_hotel_audit.service import HotelAuditService  # noqa: E402
 
 
 def main() -> int:
@@ -36,10 +37,7 @@ def main() -> int:
     if args.hotel_id <= 0:
         parser.error("hotel ID must be a positive integer")
     try:
-        fetched = call_gateway(
-            "/v1/hotel-details",
-            {"hotel_id": args.hotel_id, "language": args.language},
-        )
+        fetched = HotelAuditService().get_hotel(args.hotel_id, args.language)
         if not fetched.get("ok") or not isinstance(fetched.get("hotel"), dict):
             result = fetched
         else:
@@ -59,7 +57,21 @@ def main() -> int:
                 "coordinate_audit": audit,
                 "hotel": fetched["hotel"],
             }
-    except (SecretStoreError, ValueError) as exc:
+    except CredentialError as exc:
+        result = {
+            "ok": False,
+            "error": {"code": "credentials_unavailable", "message": str(exc)},
+        }
+    except DidaAPIError as exc:
+        result = {
+            "ok": False,
+            "error": {
+                "code": "dida_api_error",
+                "message": str(exc),
+                "status": exc.status,
+            },
+        }
+    except ValueError as exc:
         result = {
             "ok": False,
             "error": {"code": "coordinate_audit_error", "message": str(exc)},
