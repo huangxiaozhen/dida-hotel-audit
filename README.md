@@ -2,7 +2,7 @@
 
 `dida-hotel-audit` 是一个可复用的 Agent Skill。它直接调用 Dida Content API v2 获取酒店完整静态记录，再由当前大模型按用户的问题分析酒店身份、经纬度、房型、设施、政策、图片等内容。
 
-本版本采用最简单的“直接凭证”方案：不使用 Audit key、不部署网关，也不需要 Cloudflare。ClientID 已在程序中固定为 `Huangzhen_test`，每位同事只需在自己的电脑上配置 LicenseKey，查询时由本机直接访问 Dida 静态接口。
+本版本采用最简单的“直接凭证”方案：不使用 Audit key、不部署网关，也不需要 Cloudflare。ClientID 已在程序中固定为 ``，每位同事只需在自己的电脑上配置 LicenseKey，查询时由本机直接访问 Dida 静态接口。
 
 ```text
 同事的 Agent -> 已安装的 dida-hotel-audit -> Dida Content API v2
