@@ -1,6 +1,6 @@
 ---
 name: dida-hotel-audit
-description: Fetch and analyze current Dida Content API static hotel records for identity, coordinates, policies, facilities, rooms, images, and other static-content questions. Use when a request includes Dida hotel IDs; do not use for prices, availability, reservations, or non-Dida IDs.
+description: 获取并分析当前 Dida Content API 的酒店静态信息，用于判断酒店是否为同一家、核验经纬度，以及分析政策、设施、房型、图片等静态内容。当请求包含 Dida 酒店 ID 时使用；不用于价格、库存、预订或非 Dida 酒店 ID。
 metadata:
   openclaw:
     primaryEnv: DIDA_AUDIT_ACCESS_KEY
@@ -10,73 +10,73 @@ metadata:
         - python3
 ---
 
-# Dida Hotel Audit
+# Dida 酒店审核
 
-This is one reusable Dida static-data analysis Skill. Do not create another Skill merely because a user's static-data question has no specialized workflow. Unless the user explicitly asks to develop or extend tooling, fetch the relevant Dida records and let the current model analyze them against the request.
+这是一个可复用的 Dida 静态数据分析 Skill。不要仅仅因为用户提出的静态数据问题没有专用流程，就创建新的 Skill。除非用户明确要求开发或扩展工具，否则应获取相关 Dida 酒店记录，并交给当前模型按照用户的实际需求进行分析。
 
-Never query Dida by constructing credentials yourself and never request credentials in chat.
+绝不要自行拼接凭据来查询 Dida，也不要在聊天中索要凭据。
 
-## Task routing
+## 任务路由
 
-- Two hotel IDs and a same-property or merge question: use `compare_hotels`.
-- One hotel ID and an external map-coordinate check: use `audit_coordinate`.
-- Any other Dida static-content question: use `fetch_hotels`, then analyze the returned records directly.
+- 提供两个酒店 ID，询问是否为同一家酒店或能否合并：使用 `compare_hotels`。
+- 提供一个酒店 ID，要求与外部地图坐标进行核验：使用 `audit_coordinate`。
+- 其他任何 Dida 静态内容问题：使用 `fetch_hotels`，然后直接分析返回的酒店记录。
 
-Existing specialized workflows are deterministic helpers inside this Skill, not separate Skills. Do not scaffold a new Skill or add a new named workflow during an ordinary audit request.
+现有专用流程是本 Skill 内部的确定性辅助功能，并非独立 Skill。处理普通审核请求时，不要搭建新的 Skill，也不要新增命名工作流。
 
-## General static analysis
+## 通用静态信息分析
 
-1. Extract between 1 and 50 positive Dida hotel IDs. Ask only when an ID required by the request is missing or ambiguous.
-2. Read [general static analysis rules](references/general-static-analysis.md).
-3. Run the first available command, substituting all relevant IDs:
+1. 从请求中提取 1 至 50 个正整数形式的 Dida 酒店 ID。仅当完成请求所需的 ID 缺失或含义不明确时，才向用户询问。
+2. 阅读[通用静态信息分析规则](references/general-static-analysis.md)。
+3. 将所有相关 ID 代入下列命令，并运行第一个可用的命令：
 
    - `python "{baseDir}/scripts/fetch_hotels.py" HOTEL_ID [HOTEL_ID ...] --language en-US`
    - `python3 "{baseDir}/scripts/fetch_hotels.py" HOTEL_ID [HOTEL_ID ...] --language en-US`
 
-4. Treat `hotels` as the complete static records returned by the configured Dida account for that request. Give those records to the current model and answer the user's actual question from the relevant fields.
-5. If external evidence is required, retrieve it from the provider requested by the user and clearly separate it from Dida data. If a record or field is missing, state that limitation instead of inventing a value.
-6. Lead with the answer, then show the decisive evidence and Dida trace metadata. Do not dump the entire JSON unless the user asks for it.
+4. 将 `hotels` 视为已配置 Dida 账号针对本次请求返回的完整静态记录。把这些记录交给当前模型，根据相关字段回答用户的实际问题。
+5. 如果需要外部证据，应从用户指定的服务提供方获取，并与 Dida 数据明确区分。如果记录或字段缺失，应说明这一限制，不得编造数据。
+6. 先给出结论，再展示决定性证据和 Dida 追踪元数据。除非用户明确要求，否则不要输出完整 JSON。
 
-## Compare two hotels
+## 比较两家酒店
 
-1. Extract exactly two positive Dida hotel IDs from the request. If either ID is missing or ambiguous, ask for it.
-2. Read [comparison rules](references/comparison-rules.md) before interpreting the result.
-3. Run the first available command, substituting the two IDs:
+1. 从请求中准确提取两个正整数形式的 Dida 酒店 ID。如果任一 ID 缺失或含义不明确，应向用户询问。
+2. 在解读结果之前，阅读[酒店比较规则](references/comparison-rules.md)。
+3. 将两个 ID 代入下列命令，并运行第一个可用的命令：
 
    - `python "{baseDir}/scripts/compare_hotels.py" HOTEL_ID_A HOTEL_ID_B --language en-US`
    - `python3 "{baseDir}/scripts/compare_hotels.py" HOTEL_ID_A HOTEL_ID_B --language en-US`
 
-4. Treat the returned `hotels` array as the complete static records returned by the configured Dida account for that request. Use `comparison.evidence` for deterministic comparisons and inspect other returned static fields when they materially clarify identity.
-5. If `ok` is false, a hotel is missing, or the gateway reports an authentication/API error, report the limitation. Do not infer or invent hotel data.
+4. 将返回的 `hotels` 数组视为已配置 Dida 账号针对本次请求返回的完整静态记录。使用 `comparison.evidence` 进行确定性比较；如果其他静态字段能够实质性帮助确认酒店身份，也应一并检查。
+5. 如果 `ok` 为 false、任一酒店缺失，或网关返回身份验证/API 错误，应如实说明限制。不得推测或编造酒店数据。
 
-## Compare response
+## 酒店比较结果
 
-Lead with one of these conclusions:
+首先给出以下结论之一：
 
-- Same hotel — safe to treat as one property.
-- Different hotels — do not merge automatically.
-- Evidence insufficient — manual review required.
+- 同一家酒店——可以作为同一酒店处理。
+- 不同酒店——不要自动合并。
+- 证据不足——需要人工复核。
 
-Then provide a compact comparison table covering name, address, coordinates and distance, telephone, postal code, destination, external mapping identifiers, and other decisive fields returned by Dida. Explain conflicts and missing data. Include the Dida trace ID and response timestamp when present.
+然后提供简洁的对比表，涵盖酒店名称、地址、坐标及距离、电话、邮编、目的地、外部映射标识，以及 Dida 返回的其他决定性字段。说明字段冲突和缺失数据。如果响应中包含 Dida 追踪 ID 和响应时间戳，也应一并提供。
 
-The deterministic result is a conservative baseline. You may downgrade a conclusion to manual review when raw fields expose unresolved contradictions. Do not upgrade manual review to a definite match based only on similar names, rooms, facilities, or descriptions.
+确定性比较结果只作为保守基线。如果原始字段存在尚未解决的矛盾，可以将结论降级为人工复核。不得仅凭名称、房型、设施或描述相似，就把人工复核升级为明确匹配。
 
-## Audit one hotel's coordinates
+## 核验单家酒店的坐标
 
-1. Extract one positive Dida hotel ID and read [coordinate audit rules](references/coordinate-audit-rules.md).
-2. Fetch the Dida record with the first available command:
+1. 提取一个正整数形式的 Dida 酒店 ID，并阅读[坐标核验规则](references/coordinate-audit-rules.md)。
+2. 运行下列第一个可用的命令，获取 Dida 酒店记录：
 
    - `python "{baseDir}/scripts/get_hotel.py" HOTEL_ID --language en-US`
    - `python3 "{baseDir}/scripts/get_hotel.py" HOTEL_ID --language en-US`
 
-3. Use the returned name, address, destination, telephone, and other identity fields to locate the same property on the map provider requested by the user. Do not treat a similarly named place or a map viewport center as the hotel coordinate.
-4. After independently verifying the map place and extracting its marker coordinates, run the first available command:
+3. 使用返回的酒店名称、地址、目的地、电话及其他身份字段，在用户指定的地图服务中定位同一家酒店。不要把名称相似的地点或地图视窗中心当作酒店坐标。
+4. 独立核实地图地点并提取其标记坐标后，运行下列第一个可用的命令：
 
    - `python "{baseDir}/scripts/audit_coordinate.py" HOTEL_ID --reference-latitude LAT --reference-longitude LON --reference-provider "Google Maps" --reference-name "PLACE_NAME" --reference-url "SOURCE_URL" --threshold-meters 1000`
    - `python3 "{baseDir}/scripts/audit_coordinate.py" HOTEL_ID --reference-latitude LAT --reference-longitude LON --reference-provider "Google Maps" --reference-name "PLACE_NAME" --reference-url "SOURCE_URL" --threshold-meters 1000`
 
-5. Report the Dida coordinate, verified reference coordinate, Haversine distance, threshold result, identity-matching evidence, source URL, and Dida trace metadata. If the map place identity or marker coordinate cannot be verified, report evidence insufficient instead of guessing.
+5. 报告 Dida 坐标、已核实的参考坐标、Haversine 球面距离、阈值判断结果、酒店身份匹配证据、来源 URL 和 Dida 追踪元数据。如果无法核实地图地点身份或标记坐标，应报告证据不足，不得猜测。
 
-## Security
+## 安全要求
 
-Never display, log, copy, or ask for `DIDA_AUDIT_ACCESS_KEY`, Dida ClientID, Dida LicenseKey, Basic Authorization values, or protected-store contents. Do not pass access keys as command-line arguments. The helper reads the access key from a protected local store or runtime environment.
+绝不显示、记录、复制或索要 `DIDA_AUDIT_ACCESS_KEY`、Dida ClientID、Dida LicenseKey、Basic Authorization 值或受保护存储区中的内容。不要通过命令行参数传递访问密钥。辅助程序会从受保护的本地存储区或运行时环境中读取访问密钥。
